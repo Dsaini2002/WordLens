@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordLens — Reader</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="index.html">WordLens</a>
+  <p id="pdfname">Click any word — its meaning shows up on the right.</p>
+  <span class="tools">
+    <button class="ghost" id="fm" title="Smaller text">A-</button>
+    <button class="ghost" id="fp" title="Larger text">A+</button>
+    <button class="ghost" id="themeBtn">Light / Dark</button>
+  </span>
+  <label class="uploadbtn">Open a PDF<input type="file" id="fileInput" accept="application/pdf"></label>
+</header>
+<main>
+  <section class="reader" id="reader">
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="fileInput2" accept="application/pdf">
+      Click to choose a PDF, or drop one here
+    </label>
+  </section>
+  <aside class="panel">
+    <div class="tabs">
+      <button data-t="meaning" class="on">Meaning</button>
+      <button data-t="words" class="ghost">Words</button>
+      <button data-t="revise" class="ghost">Revise</button>
+    </div>
+    <section id="t-meaning"><div class="card" id="currentCard"><div class="hint">Click a word to look it up. Select a whole sentence to get it in easy words.</div></div></section>
+    <section id="t-words" hidden><div id="wordsHead"></div><ul class="savedlist" id="savedList"><li class="empty">Nothing saved yet.</li></ul></section>
+    <section id="t-revise" hidden></section>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const JSONH = { 'Content-Type': 'application/json' };
+const DEV = s => /[\u0900-\u097F]/.test(s);
+
+let activeWordEl = null, currentPdf = '', allWords = [], scope = 'pdf', queue = [];
+let knownMap = new Map(), longWords = new Set();
+
+/* ---------- theme + font size (remembered) ---------- */
+const rootEl = document.documentElement;
+rootEl.dataset.theme = localStorage.wlTheme || 'dark';
+let fsz = +localStorage.wlFs || 1.1;
+function setFs(v){ fsz = Math.min(1.8, Math.max(.85, v)); rootEl.style.setProperty('--fs', fsz + 'rem'); localStorage.wlFs = fsz; }
+setFs(fsz);
+$('#themeBtn').onclick = () => { rootEl.dataset.theme = rootEl.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.wlTheme = rootEl.dataset.theme; };
+$('#fm').onclick = () => setFs(fsz - .1);
+$('#fp').onclick = () => setFs(fsz + .1);
+
+/* ---------- pronunciation (browser speech, no key needed) ---------- */
+function speak(w){
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(w); u.lang = DEV(w) ? 'hi-IN' : 'en-US'; u.rate = .9;
+  speechSynthesis.speak(u);
+}
+
+/* ---------- tabs ---------- */
+function showTab(t){
+  $$('.tabs button').forEach(b => b.className = b.dataset.t === t ? 'on' : 'ghost');
+  ['meaning','words','revise'].forEach(n => $('#t-' + n).hidden = n !== t);
+  if (t === 'words') renderWords();
+  if (t === 'revise') startRevise();
+}
+$$('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.t));
+
+refreshSavedList();
+
+const reader = document.getElementById('reader');
+[document.getElementById('fileInput'), document.getElementById('fileInput2')].forEach(inp => {
+  inp.addEventListener('change', e => { if(e.target.files[0]) loadPdf(e.target.files[0]); });
+});
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('dragover', e => e.preventDefault());
+dropzone.addEventListener('drop', e => { e.preventDefault(); if(e.dataTransfer.files[0]) loadPdf(e.dataTransfer.files[0]); });
+
+async function loadPdf(file){
+  currentPdf = file.name; longWords = new Set();
+  $('#pdfname').textContent = file.name;
+  reader.innerHTML = '<p style="font-family:-apple-system,system-ui,sans-serif;color:var(--soft)">Loading…</p>';
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  reader.innerHTML = '';
+  for(let n=1; n<=pdf.numPages; n++){ await renderPage(pdf, n); }
+  addPreview();
+  refreshSavedList();
+}
+
+/* ---------- tough words to preview (longest unusual words in this PDF) ---------- */
+function addPreview(){
+  const top = [...longWords].sort((a,b) => b.length - a.length).slice(0, 10);
+  if (!top.length) return;
+  const d = document.createElement('div'); d.className = 'preview';
+  d.innerHTML = '<b>Tough words to preview:</b><br>' + top.map(w => `<span class="chip" data-w="${esc(w)}">${esc(w)}</span>`).join('');
+  d.addEventListener('click', e => { const c = e.target.closest('.chip'); if (c) lookup(c.dataset.w, '', null); });
+  reader.prepend(d);
+}
+
+// Turn one page's PDF text items into lines, then paragraphs — every
+// character is kept; nothing is drawn from the PDF itself.
+function buildParagraphs(items, viewport){
+  const its = items.filter(it => it.str && it.str.trim() !== '').map(it => {
+    const tx = pdfjsLib.Util.transform(viewport.transform, it.transform);
+    return { str: it.str, x: tx[4], y: tx[5], size: Math.hypot(tx[2], tx[3]),
+             w: (it.width || 0) * viewport.scale };
+  });
+  if (!its.length) return [];
+
+  const sizes = its.filter(i => i.str.trim().length >= 3).map(i => i.size).sort((p,q)=>p-q);
+  const body = sizes.length ? sizes[Math.floor(sizes.length/2)] : 0;
+  const clean = its.filter(i => !(i.str.trim().length === 1 && /[a-zA-Z]/.test(i.str.trim()) && body && i.size < body*0.78));
+
+  clean.sort((p,q) => p.y - q.y || p.x - q.x);
+  const lines = [];
+  clean.forEach(i => {
+    const last = lines[lines.length-1];
+    if (last && Math.abs(i.y - last.y) < Math.max(i.size, last.size) * 0.5) last.items.push(i);
+    else lines.push({ y: i.y, size: i.size, items: [i] });
+  });
+
+  lines.forEach(L => {
+    L.items.sort((p,q) => p.x - q.x);
+    let text = '', prevEnd = null;
+    L.items.forEach(i => {
+      if (prevEnd !== null) {
+        const gap = i.x - prevEnd;
+        const noSpaceYet = !/\s$/.test(text) && !/^\s/.test(i.str);
+        const glued = /[.,;:!?”"’)]$/.test(text) && /^[A-Za-z“"‘(]/.test(i.str);
+        if (noSpaceYet && (gap > i.size * 0.1 || glued)) text += ' ';
+      }
+      text += i.str;
+      prevEnd = i.x + i.w;
+    });
+    L.text = text.replace(/\s+$/,'').replace(/^\s+/,'');
+    L.left = L.items[0].x; L.right = prevEnd; L.width = L.right - L.left;
+  });
+
+  const gaps = [];
+  for (let k = 1; k < lines.length; k++) gaps.push(lines[k].y - lines[k-1].y);
+  gaps.sort((p,q)=>p-q);
+  const medGap = gaps.length ? gaps[Math.floor(gaps.length/2)] : 0;
+  const maxW = Math.max(...lines.map(l => l.width));
+
+  const paras = [];
+  let cur = '';
+  lines.forEach((L, k) => {
+    if (k > 0) {
+      const P = lines[k-1], gap = L.y - P.y;
+      const bigGap = medGap && gap > medGap * 1.45;
+      const shortEnd = P.width < maxW * 0.82 && /[.!?:”"’')\]\u0964]$/.test(P.text);
+      if (bigGap || shortEnd) { paras.push(cur); cur = ''; }
+    }
+    if (cur && /[A-Za-z]-$/.test(cur)) cur = cur.slice(0, -1) + L.text;
+    else cur = cur ? cur + ' ' + L.text : L.text;
+  });
+  if (cur) paras.push(cur);
+  return paras;
+}
+
+// the whole sentence around position i: this is the context sent to the AI
+function sentenceAt(t, i){
+  let s = 0, e = t.length;
+  for (const m of t.matchAll(/[.!?\u0964]["”’)]*\s+/g)) {
+    const end = m.index + m[0].length;
+    if (end <= i) s = end; else { e = m.index + 1; break; }
+  }
+  return t.slice(s, e).trim().slice(0, 400);
+}
+
+function markSpan(span, word){
+  const w = knownMap.get(word.toLowerCase());
+  span.classList.toggle('known', !!w);
+  span.classList.toggle('hard', !!w && w.level === 'hard');
+}
+function markAll(){ $$('.w').forEach(s => markSpan(s, s.textContent.replace(/['’]s$/i, ''))); }
+
+function paragraphEl(text){
+  const p = document.createElement('p');
+  const re = /[\p{L}\p{M}]+(?:['’][\p{L}\p{M}]+)*/gu;        // English and Hindi (Devanagari) words
+  let last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) p.appendChild(document.createTextNode(text.slice(last, m.index)));
+    const span = document.createElement('span');
+    span.className = 'w';
+    span.textContent = m[0];
+    const word = m[0].replace(/['’]s$/i, '');
+    if (/^[A-Za-z]{9,}$/.test(word)) longWords.add(word.toLowerCase());
+    markSpan(span, word);
+    const ctxText = sentenceAt(text, m.index);
+    span.addEventListener('click', () => { if (String(getSelection()).trim()) return; lookup(word, ctxText, span); });
+    let hoverTimer = null;
+    span.addEventListener('mouseenter', () => { hoverTimer = setTimeout(() => prefetch(word, ctxText), 300); });
+    span.addEventListener('mouseleave', () => clearTimeout(hoverTimer));
+    p.appendChild(span);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) p.appendChild(document.createTextNode(text.slice(last)));
+  return p;
+}
+
+async function renderPage(pdf, n){
+  const page = await pdf.getPage(n);
+  const viewport = page.getViewport({ scale: 1 });
+  const content = await page.getTextContent();
+  const paras = buildParagraphs(content.items, viewport);
+  const wrap = document.createElement('div');
+  wrap.className = 'page';
+  const num = document.createElement('div');
+  num.className = 'pnum';
+  num.textContent = 'Page ' + n + ' of ' + pdf.numPages;
+  wrap.appendChild(num);
+  paras.forEach(t => wrap.appendChild(paragraphEl(t)));
+  if (!paras.length) {
+    const p = document.createElement('p');
+    p.textContent = '(No selectable text on this page — it may be a scanned image.)';
+    wrap.appendChild(p);
+  }
+  reader.appendChild(wrap);
+}
+
+/* ---------- select a sentence -> easy English + Hinglish + Hindi ---------- */
+reader.addEventListener('mouseup', () => {
+  const s = String(getSelection()).trim();
+  if (s.split(/\s+/).length < 3) return;
+  showTab('meaning');
+  const card = $('#currentCard');
+  card.innerHTML = `<div class="sec">Selected text</div><div class="hg">${esc(s.slice(0, 300))}</div><div class="row"><button id="simpBtn">Explain in easy words</button></div>`;
+  $('#simpBtn').onclick = async () => {
+    card.insertAdjacentHTML('beforeend', '<div class="hint"><span class="spinner"></span> Working…</div>');
+    try {
+      const r = await fetch('/api/simplify', { method:'POST', headers: JSONH, body: JSON.stringify({ text: s }) }).then(x => x.json());
+      card.innerHTML = `<div class="sec">Selected text</div><div class="hg">${esc(s.slice(0, 300))}</div>
+        ${r.simple ? `<div class="sec">In easy English</div><div class="meaning">${esc(r.simple)}</div>` : ''}
+        ${r.hinglish ? `<div class="hg"><b>Hinglish:</b> ${esc(r.hinglish)}</div>` : ''}
+        ${r.hindi ? `<div class="hindi">हिंदी: ${esc(r.hindi)}</div>` : ''}
+        ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}`;
+    } catch { card.insertAdjacentHTML('beforeend', '<div class="note">Couldn\'t reach the server.</div>'); }
+  };
+});
+
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function cardHTML(d){
+  const meaning = d.simple || d.definition || 'No meaning found.';
+  const hg = t => t ? `<div class="hg"><b>Hinglish:</b> ${esc(t)}</div>` : '';
+  return `
+    <div class="word">${esc(d.word)}</div>
+    ${d.partOfSpeech ? `<div class="pos">${esc(d.partOfSpeech)}</div>` : ''}
+    ${d.pronunciation ? `<div class="say">🔊 ${esc(d.pronunciation)}</div>` : ''}
+    <div class="sec">Meaning in easy words</div>
+    <div class="meaning">${esc(meaning)}</div>
+    ${hg(d.hinglish)}
+    ${d.hindi ? `<div class="hindi">हिंदी: ${esc(d.hindi)}</div>` : ''}
+    ${d.example ? `<div class="sec">Example</div><div class="meaning ex">“${esc(d.example)}”</div>${hg(d.exampleHinglish)}` : ''}
+    ${d.realWorld ? `<div class="sec">In real life</div><div class="meaning">${esc(d.realWorld)}</div>${hg(d.realWorldHinglish)}` : ''}
+    <div class="row">
+      <button class="ghost" data-a="speak">Listen</button>
+      <button class="${d.level === 'easy' ? 'on' : 'ghost'}" data-a="easy">Easy</button>
+      <button class="${d.level === 'hard' ? 'on' : 'ghost'}" data-a="hard">Hard</button>
+      <button class="ghost" data-a="del">Delete</button>
+    </div>
+    ${d.ms ? `<div class="note">${d.ai ? 'answered by ' + esc(d.via) + ' in ' : 'took '}${(d.ms/1000).toFixed(1)}s</div>` : ''}
+    ${d.ai === false ? `<div class="note">${d.aiError ? 'AI could not answer: ' + esc(d.aiError.slice(0,140)) : 'Plain dictionary answer. Add a free API key on the server for easy explanations, examples and real-life use (see README).'}</div>` : ''}
+  `;
+}
+
+function showCard(d){
+  const card = $('#currentCard');
+  card.innerHTML = cardHTML(d);
+  card.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
+    const a = b.dataset.a, k = encodeURIComponent(d.word);
+    if (a === 'speak') return speak(d.word);
+    if (a === 'del') {
+      await fetch('/api/words/' + k, { method: 'DELETE' });
+      wordCache.delete(d.word.toLowerCase());
+      card.innerHTML = '<div class="hint">Deleted.</div>';
+      return refreshSavedList();
+    }
+    d.level = d.level === a ? 'new' : a;                      // tap again to un-mark
+    await fetch('/api/words/' + k, { method: 'PATCH', headers: JSONH, body: JSON.stringify({ level: d.level }) });
+    showCard(d); refreshSavedList();
+  });
+}
+
+const wordCache = new Map();
+const inflight = new Map();
+let lookupId = 0;
+
+function post(body){
+  return fetch('/api/lookup', { method:'POST', headers: JSONH, body: JSON.stringify({ ...body, pdf: currentPdf }) })
+    .then(r => r.json());
+}
+
+function prefetch(word, ctx){
+  const k = word.toLowerCase();
+  if (wordCache.has(k) || inflight.has(k)) return;
+  const p = post({ word, context: ctx, prefetch: true })
+    .then(d => { if (d && d.word && d.ai) wordCache.set(k, Object.assign({}, d, { prefetched: true })); })
+    .catch(() => {})
+    .finally(() => inflight.delete(k));
+  inflight.set(k, p);
+}
+
+async function lookup(word, contextText, el){
+  if(activeWordEl) activeWordEl.classList.remove('active');
+  activeWordEl = el; el?.classList.add('active');
+  showTab('meaning');
+
+  const card = document.getElementById('currentCard');
+  const k = word.toLowerCase();
+  const myId = ++lookupId;
+
+  if (!wordCache.has(k) && inflight.has(k)) {
+    card.innerHTML = `<div class="word">${esc(word)}</div><div class="meaning"><span class="spinner"></span> Looking up…</div>`;
+    await inflight.get(k);
+    if (myId !== lookupId) return;
+  }
+
+  const cached = wordCache.get(k);
+  if (cached && cached.ai !== false) {
+    showCard(cached);
+    el?.classList.add('known');
+    if (cached.prefetched) {
+      cached.prefetched = false;
+      post({ word, context: contextText }).then(refreshSavedList).catch(() => {});
+    } else if (currentPdf) {
+      post({ word, context: contextText }).then(refreshSavedList).catch(() => {});   // record this PDF for the word
+    }
+    return;
+  }
+
+  card.innerHTML = `<div class="word">${esc(word)}</div><div class="meaning"><span class="spinner"></span> Looking up…</div>`;
+  try{
+    const data = await post({ word, context: contextText });
+    if (data.word) wordCache.set(data.word.toLowerCase(), data);
+    el?.classList.add('known');
+    if (myId !== lookupId) { refreshSavedList(); return; }
+    showCard(data);
+    refreshSavedList();
+  }catch(e){
+    card.innerHTML = `<div class="word">${esc(word)}</div><div class="meaning">Couldn't reach the server. Is it running?</div>`;
+  }
+}
+
+/* ---------- saved words (per PDF or all) ---------- */
+async function refreshSavedList(){
+  try{
+    allWords = await (await fetch('/api/words')).json();
+    knownMap = new Map(allWords.map(w => [w.word.toLowerCase(), w]));
+    allWords.forEach(w => { if (w.ai && w.hinglish) wordCache.set(w.word.toLowerCase(), w); });
+    markAll();
+    if (!$('#t-words').hidden) renderWords();
+  }catch(e){ /* server not up yet */ }
+}
+const scoped = () => scope === 'pdf' && currentPdf ? allWords.filter(w => (w.pdfs || []).includes(currentPdf)) : allWords;
+
+function renderWords(){
+  const L = scoped(), easy = L.filter(w => w.level === 'easy').length, hard = L.filter(w => w.level === 'hard').length;
+  const pct = L.length ? Math.round(easy / L.length * 100) : 0;
+  $('#wordsHead').innerHTML = `
+    <div class="row" style="margin:0 0 10px">
+      <button class="${scope === 'pdf' ? 'on' : 'ghost'}" data-s="pdf">This PDF</button>
+      <button class="${scope === 'all' ? 'on' : 'ghost'}" data-s="all">All PDFs</button>
+      <a class="btn" href="/api/export${scope === 'pdf' && currentPdf ? '?pdf=' + encodeURIComponent(currentPdf) : ''}">Export for Anki</a>
+    </div>
+    <div class="hint" style="margin:0">${L.length} words · ${easy} easy · ${hard} hard</div><div class="bar"><i style="width:${pct}%"></i></div>`;
+  $$('#wordsHead [data-s]').forEach(b => b.onclick = () => { scope = b.dataset.s; renderWords(); });
+  const listEl = $('#savedList');
+  if (!L.length) { listEl.innerHTML = '<li class="empty">Nothing saved yet.</li>'; return; }
+  listEl.innerHTML = '';
+  L.forEach(w => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="sw">${esc(w.word)}</span>${w.level && w.level !== 'new' ? `<span class="tag">${w.level}</span>` : ''}<span class="sm">${esc(w.simple || w.definition || '')}${w.hindi ? ' · ' + esc(w.hindi) : ''}</span>`;
+    li.addEventListener('click', () => { showTab('meaning'); showCard(w); });
+    listEl.appendChild(li);
+  });
+}
+
+/* ---------- revise (spaced repetition, hard words first) ---------- */
+function startRevise(){
+  queue = scoped().filter(w => (w.due || 0) <= Date.now())
+    .sort((a, b) => (b.level === 'hard') - (a.level === 'hard') || (a.box || 0) - (b.box || 0));
+  drawRevise(false);
+}
+function drawRevise(show){
+  const R = $('#t-revise'), w = queue[0];
+  if (!w) { R.innerHTML = '<div class="card"><div class="meaning">Nothing to revise right now. Come back later, or click more words while reading.</div></div>'; return; }
+  R.innerHTML = `<div class="hint" style="margin:0 0 8px">${queue.length} due · hard words first</div>
+    <div class="card"><div class="word">${esc(w.word)}</div>
+    ${w.pronunciation ? `<div class="say">🔊 ${esc(w.pronunciation)}</div>` : ''}
+    ${show ? `<div class="meaning">${esc(w.simple || w.definition || '')}</div>${w.hinglish ? `<div class="hg"><b>Hinglish:</b> ${esc(w.hinglish)}</div>` : ''}${w.hindi ? `<div class="hindi">हिंदी: ${esc(w.hindi)}</div>` : ''}${w.example ? `<div class="hg"><i>${esc(w.example)}</i></div>` : ''}
+      <div class="row"><button class="ghost" id="rNo">Again</button><button id="rYes">Got it</button><button class="ghost" id="rSay">Listen</button></div>`
+    : `<div class="row"><button id="rShow">Show meaning</button><button class="ghost" id="rSay">Listen</button></div>`}</div>`;
+  $('#rSay').onclick = () => speak(w.word);
+  if (!show) { $('#rShow').onclick = () => drawRevise(true); return; }
+  const answer = async good => {
+    queue.shift(); if (!good) queue.push(w);
+    await fetch('/api/review/' + encodeURIComponent(w.word), { method:'POST', headers: JSONH, body: JSON.stringify({ good }) });
+    refreshSavedList(); drawRevise(false);
+  };
+  $('#rNo').onclick = () => answer(false);
+  $('#rYes').onclick = () => answer(true);
+}
+</script>
+</body>
+</html>

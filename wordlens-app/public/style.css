@@ -1,0 +1,46 @@
+:root{--bg:#050E24;--bg2:#0A1F4D;--fg:#fff;--soft:rgba(255,255,255,.72);--rule:rgba(255,255,255,.16);--glass:rgba(255,255,255,.07);--glass2:rgba(5,14,36,.6);
+--blue:#1F6FEB;--sky:#7CB8FF;--ring:rgba(124,184,255,.10);--grid:rgba(255,255,255,.035);--glow:rgba(31,111,235,.35);--fs:1.1rem;--accent:#7CB8FF}
+[data-theme=light]{--bg:#EAF2FF;--bg2:#FFFFFF;--fg:#0A1F4D;--soft:rgba(10,31,77,.7);--rule:rgba(10,31,77,.18);--glass:rgba(255,255,255,.8);--glass2:rgba(255,255,255,.88);
+--ring:rgba(31,111,235,.10);--grid:rgba(10,31,77,.05);--glow:rgba(31,111,235,.18);--accent:#1F6FEB}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{color:var(--fg);font-family:'Charter','Bitstream Charter','Iowan Old Style',Georgia,serif;display:flex;flex-direction:column;background-color:var(--bg);
+background-image:repeating-radial-gradient(circle at 92% -8%,transparent 0 46px,var(--ring) 47px 48px),radial-gradient(900px 600px at 8% 105%,var(--glow),transparent 65%),radial-gradient(700px 500px at 95% 0%,var(--glow),transparent 60%),linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px),linear-gradient(160deg,var(--bg2) 0%,var(--bg) 60%);
+background-size:auto,auto,auto,36px 36px,36px 36px,auto;background-attachment:fixed}
+button{font:600 .8rem -apple-system,system-ui,sans-serif;color:#fff;background:var(--blue);border:1px solid var(--sky);border-radius:999px;padding:7px 13px;cursor:pointer}
+button:hover,.uploadbtn:hover{filter:brightness(1.15)}button:focus-visible,.uploadbtn:focus-within{outline:2px solid var(--sky);outline-offset:2px}
+button.ghost,a.btn{background:transparent;color:var(--fg);border-color:var(--rule)}a.btn{font:600 .8rem -apple-system,system-ui,sans-serif;border:1px solid var(--rule);border-radius:999px;padding:7px 13px;text-decoration:none}
+header{padding:14px 22px;border-bottom:1px solid var(--rule);background:var(--glass2);backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header a.brand{font-weight:700;font-size:1.05rem;color:var(--fg);text-decoration:none}
+header p{margin:0;color:var(--soft);font-size:.82rem;font-family:-apple-system,system-ui,sans-serif;max-width:46ch}
+.tools{margin-left:auto;display:flex;gap:6px}
+.uploadbtn{font-family:-apple-system,system-ui,sans-serif;font-size:.85rem;background:var(--blue);color:#fff;padding:8px 14px;border-radius:999px;cursor:pointer;border:1px solid var(--sky)}.uploadbtn input{display:none}
+main{flex:1;display:flex;min-height:0}
+.reader{flex:1 1 62%;overflow-y:auto;padding:26px 4vw 60px;min-width:0;display:flex;flex-direction:column;align-items:center}
+.dropzone{border:1.5px dashed var(--sky);border-radius:14px;padding:48px 20px;text-align:center;color:var(--fg);background:var(--glass);font-family:-apple-system,system-ui,sans-serif;cursor:pointer;max-width:520px;margin:8vh auto;display:block}
+.dropzone:hover{background:rgba(31,111,235,.25)}.dropzone input{display:none}
+.preview{max-width:700px;width:100%;margin-bottom:18px;font:.8rem -apple-system,system-ui,sans-serif;color:var(--soft)}
+.chip{display:inline-block;margin:5px 6px 0 0;padding:4px 11px;border:1px solid var(--rule);border-radius:999px;background:var(--glass);color:var(--fg);cursor:pointer}.chip:hover{border-color:var(--sky)}
+.page{max-width:700px;width:100%;margin:0 0 24px;padding:40px 50px;background:linear-gradient(180deg,var(--glass),transparent);border:1px solid var(--rule);border-left:3px solid var(--blue);border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.25);backdrop-filter:blur(6px)}
+.page .pnum{font:.72rem -apple-system,system-ui,sans-serif;color:var(--soft);text-align:right;margin-bottom:12px}
+.page p{margin:0 0 1.15em;line-height:1.9;font-size:var(--fs)}
+.page .w{cursor:pointer;border-radius:3px}.page .w:hover{background:rgba(31,111,235,.5)}.page .w.active{background:var(--blue);color:#fff;box-shadow:0 0 0 2px rgba(124,184,255,.5)}
+.page .w.known{border-bottom:1.5px dotted var(--sky)}.page .w.hard{border-bottom-color:#FFB86B}
+@media(max-width:600px){.page{padding:24px 18px}}
+.panel{flex:0 0 340px;max-width:40vw;border-left:1px solid var(--rule);background:var(--glass2);backdrop-filter:blur(10px);overflow-y:auto;padding:16px;font-family:-apple-system,system-ui,sans-serif}
+.tabs{display:flex;gap:6px;margin-bottom:14px}.tabs button{flex:1}
+.card{background:linear-gradient(160deg,rgba(31,111,235,.25),var(--glass));border:1px solid var(--rule);border-radius:12px;padding:16px;margin-bottom:16px;min-height:64px}
+.card .word{font:700 1.3rem Georgia,serif;margin:0 0 4px}.card .pos{font-size:.75rem;color:var(--soft);font-style:italic;margin-bottom:8px}
+.card .meaning{font-size:.92rem;line-height:1.55}.card .hindi{margin-top:8px;font-size:.95rem;color:var(--accent);font-weight:600}
+.card .sec{font-size:.7rem;letter-spacing:.04em;color:var(--accent);font-weight:700;margin:12px 0 3px;text-transform:uppercase}
+.card .hg{margin-top:5px;font-size:.86rem;line-height:1.5;background:var(--glass);border-left:3px solid var(--sky);padding:6px 9px;border-radius:0 6px 6px 0}
+.card .say{font-size:.85rem;color:var(--soft);margin:-2px 0 4px}.card .ex{font-style:italic}
+.card .note,.hint{margin-top:10px;font-size:.76rem;color:var(--soft)}
+.card .row,.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}button.on{background:var(--blue);color:#fff}
+.savedlist{list-style:none;margin:0;padding:0}.savedlist li{padding:9px 0;border-bottom:1px solid var(--rule);cursor:pointer}
+.savedlist .sw{font-weight:700;font-size:.95rem}.savedlist .sm{display:block;color:var(--soft);font-size:.82rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:.65rem;padding:1px 7px;border-radius:99px;border:1px solid var(--rule);margin-left:6px;color:var(--soft)}
+.empty{color:var(--soft);font-size:.85rem;list-style:none;border:0}
+.bar{height:6px;border-radius:9px;background:var(--rule);overflow:hidden;margin:6px 0 12px}.bar i{display:block;height:100%;background:var(--sky)}
+.spinner{width:14px;height:14px;border:2px solid var(--rule);border-top-color:var(--sky);border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spinner{animation-duration:2s}}
+@media(max-width:760px){main{flex-direction:column}.panel{flex:none;max-width:none;max-height:46vh;border-left:none;border-top:1px solid var(--rule)}}

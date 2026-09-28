@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordLens — Click a word in your PDF, understand it instantly</title>
+<meta name="description" content="Read any PDF and click a word to get its meaning in easy English, Hinglish and Hindi. Words are saved and revised with spaced repetition.">
+<link rel="stylesheet" href="landing.css">
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="index.html">WordLens</a>
+    <div class="links"><a href="#how">How it works</a><a href="#features">Features</a><a href="#privacy">Privacy</a><a href="#faq">FAQ</a></div>
+    <a class="cta" href="app.html">Open the reader</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Stop switching tabs to look up words.</h1>
+      <p class="lede">Open a PDF, click any word you don't know, and get its meaning right beside the page in easy English, Hinglish and Hindi. The explanation fits the sentence you're reading, and every word is saved for revision.</p>
+      <div class="ctas">
+        <a class="cta" href="app.html" style="margin-left:0">Start reading</a>
+        <a class="cta ghost" href="#how">See how it works</a>
+      </div>
+      <p class="fine">Free to run on your own computer. Your PDF stays in your browser.</p>
+    </div>
+
+    <div class="win" aria-label="Live demo of the WordLens reader">
+      <div class="bar"><i></i><i></i><i></i><span>lighthouse.pdf</span></div>
+      <div class="split">
+        <div class="pg">
+          <p><span class="cap">T</span>he old lighthouse keeper had grown <button class="dw" data-k="taciturn">taciturn</button> over the years, speaking only when the sea demanded it. Visitors found him <button class="dw" data-k="inscrutable">inscrutable</button>, his weathered face giving away nothing. Yet every evening he climbed the stairs with quiet <button class="dw" data-k="diligence">diligence</button>.</p>
+        </div>
+        <div class="side" id="side" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="blk" id="how">
+  <div class="wrap">
+    <h2 class="title">From confusing word to remembered word</h2>
+    <div class="flow">
+      <div class="stp"><div class="n">1</div><h3>Read</h3><p>Drop in a PDF. WordLens shows clean, readable text with every word clickable, in English or Hindi.</p></div>
+      <div class="stp"><div class="n">2</div><h3>Understand</h3><p>Click a word. The whole sentence goes with it, so the meaning fits your book, not just a dictionary.</p></div>
+      <div class="stp"><div class="n">3</div><h3>Remember</h3><p>Words are saved per PDF. Mark them easy or hard and revise the hard ones first.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="blk" id="features">
+  <div class="wrap">
+    <h2 class="title">Made for people who read in more than one language</h2>
+    <div class="bento">
+      <div class="b big"><h3>Meaning that fits the sentence</h3><p>"Bank" in a story about a river is not the same as "bank" in a story about money. WordLens sends the sentence around your word, so the explanation matches how it is used.</p><div class="ex">Meaning, Hinglish, Hindi, pronunciation, an example and a real-life situation, for every word.</div></div>
+      <div class="b s2"><h3>Explain a whole sentence</h3><p>Select a hard sentence or paragraph and get it back in easy English, Hinglish and Hindi.</p></div>
+      <div class="b s2"><h3>Spaced repetition</h3><p>Hard words come back sooner, easy ones later. Revise right inside the app.</p></div>
+      <div class="b s2"><h3>Export to Anki</h3><p>Turn your saved words into flashcards with one click.</p></div>
+      <div class="b s2"><h3>Hindi words too</h3><p>Devanagari text is clickable, and every word has a Listen button.</p></div>
+      <div class="b s3"><h3>Tough words first</h3><p>See the longest words in a PDF before you start, so you can learn them in advance.</p></div>
+      <div class="b s3"><h3>Easy on the eyes</h3><p>Light and dark themes, adjustable text size, and your choices are remembered.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="blk" id="privacy">
+  <div class="wrap">
+    <h2 class="title">Clear about what goes where</h2>
+    <p class="sub">WordLens runs on your own computer. Here is exactly what stays and what is sent.</p>
+    <div class="two">
+      <div class="pv"><h3>Stays on your machine</h3><ul><li>Your PDF file</li><li>Your saved words and progress</li><li>Your API key</li></ul></div>
+      <div class="pv out"><h3>Sent when you click a word</h3><ul><li>The word and its sentence, to the AI provider you choose</li><li>Without a key, just the word, to a free dictionary and translation service</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="blk" id="faq">
+  <div class="wrap">
+    <h2 class="title">Questions</h2>
+    <div class="faq">
+      <details><summary>Do I need an API key?</summary><p>No. Without a key you get a dictionary meaning and Hindi translation. With a free Gemini or Groq key you also get easy explanations, Hinglish, examples and sentence simplifying.</p></details>
+      <details><summary>Does it work with scanned PDFs?</summary><p>Not yet. The PDF needs selectable text. OCR support is on the roadmap.</p></details>
+      <details><summary>Is it free?</summary><p>WordLens itself is free and open source. The free tiers of Gemini and Groq are enough for normal reading.</p></details>
+      <details><summary>Where are my saved words stored?</summary><p>In a file called data/words.json inside the project folder. You can back it up or edit it.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Open the book you've been putting off.</h2>
+    <p>Pick a PDF and click your first word. It takes a minute to set up.</p>
+    <a class="cta" href="app.html">Start reading</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap"><span>WordLens, a small tool for reading things slightly above your vocabulary.</span><span>Open source, MIT license</span></div>
+</footer>
+
+<script>
+const D = {
+  taciturn:{h:'Saying very little',m:'A taciturn person speaks only when they need to.',g:'Jo insaan bahut kam bolta hai, sirf zaroorat par.',hi:'अल्पभाषी, चुप रहने वाला',e:'He stayed taciturn at dinner and just listened.',s:'ta-si-turn'},
+  inscrutable:{h:'Hard to understand',m:'Something or someone you cannot read or figure out.',g:'Jise samajhna ya padhna bahut mushkil ho, jaise chehre se kuch pata na chale.',hi:'रहस्यमय, समझ से परे',e:'Her inscrutable smile told us nothing.',s:'in-SKROO-tuh-bul'},
+  diligence:{h:'Careful, steady work',m:'Working hard and carefully, without giving up.',g:'Kisi kaam ko mehnat aur lagan se, roz karna.',hi:'परिश्रम, लगन',e:'She studied with great diligence before the exam.',s:'DIL-i-jens'}
+};
+const side = document.getElementById('side'), btns = document.querySelectorAll('.dw');
+function show(k){
+  const d = D[k];
+  btns.forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  side.innerHTML = `<div class="w">${k}<button class="say" type="button" aria-label="Listen to ${k}">Listen</button></div>
+    <p style="color:var(--soft);font-size:.78rem;margin-top:2px">${d.s}</p>
+    <div class="t">Meaning in easy words</div><p>${d.m}</p>
+    <div class="hg" style="margin-top:8px"><b>Hinglish:</b> ${d.g}</div>
+    <div class="hi">हिंदी: ${d.hi}</div>
+    <div class="t">Example</div><p><i>${d.e}</i></p>`;
+  side.querySelector('.say').onclick = () => { if (!window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(k); u.lang = 'en-US'; u.rate = .9; speechSynthesis.speak(u); };
+}
+btns.forEach(b => b.addEventListener('click', () => show(b.dataset.k)));
+show('taciturn');
+</script>
+</body>
+</html>
