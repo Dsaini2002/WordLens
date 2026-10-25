@@ -1,6 +1,6 @@
 # WordLens
 
-Click any word while reading a PDF → its meaning (English definition + Hindi) appears in the right panel and is saved automatically, so you can revise it later.
+Click any word while reading a PDF → its meaning (English definition) appears in the right panel and is saved automatically, so you can revise it later.
 
 ## How to run (5-minute setup)
 
