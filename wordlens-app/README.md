@@ -1,75 +1,75 @@
 # WordLens
 
-PDF padhte waqt kisi bhi word pe click karo → uska meaning (English definition + Hindi) right panel mein aa jaata hai, aur automatically save ho jaata hai taaki baad mein revise kar sako.
+Click any word while reading a PDF → its meaning (English definition + Hindi) appears in the right panel and is saved automatically, so you can revise it later.
 
-## Chalane ka tareeka (5 minute setup)
+## How to run (5-minute setup)
 
-1. Node.js install hona chahiye (v18 ya usse upar). Check karo:
+1. You need Node.js installed (v18 or higher). Check with:
    ```
    node -v
    ```
-   Agar nahi hai, [nodejs.org](https://nodejs.org) se install kar lo.
+   If it's not installed, get it from [nodejs.org](https://nodejs.org).
 
-2. Is folder mein terminal khol kar dependencies install karo:
+2. Open a terminal in this folder and install the dependencies:
    ```
    npm install
    ```
 
-3. Server start karo:
+3. Start the server:
    ```
    npm start
    ```
 
-4. Browser mein kholo: **http://localhost:3000**
+4. Open in your browser: **http://localhost:3000**
 
-5. Apni PDF drag-drop karo ya click karke choose karo, aur padhna shuru karo. Jo word na aaye, usko click karo.
+5. Drag and drop your PDF (or click to choose one) and start reading. Click any word you don't know.
 
-Saare saved words `data/words.json` file mein store hote hain — yeh tumhara apna "backend database" hai, isko delete/backup/edit kar sakte ho.
+All saved words are stored in the `data/words.json` file. This is your own "backend database": you can delete, back up, or edit it.
 
 
-## Aasaan bhasha mein explanation (AI) — 2 minute setup
+## Simple-language explanations (AI): 2-minute setup
 
-Bina key ke app sirf dictionary wali mushkil definition dikhata hai. Key lagane par har word ke liye milta hai:
-matlab aasaan words mein, Hindi, ek example sentence, aur "real life mein kahan dikhta hai".
+Without a key, the app only shows the dictionary's definition, which can be hard to understand. With a key, every word also gets:
+the meaning in simple words, a Hindi translation, an example sentence, and "where you see it in real life".
 
-1. Ek FREE key banao (koi ek):
+1. Create a FREE key (either one):
    - Gemini: https://aistudio.google.com/apikey
    - Groq: https://console.groq.com/keys
-2. Project folder mein `.env.example` file ko copy karke naam `.env` rakho.
-3. `.env` mein apni key us line ke aage paste karo (sirf ek line bharni hai), jaise `GEMINI_API_KEY=abc123...`
-4. Server dobara chalao (`Ctrl + C`, phir `npm start`). Terminal mein dikhega: `Easy explanations: ON (gemini)`.
+2. In the project folder, copy the `.env.example` file and name the copy `.env`.
+3. In `.env`, paste your key after the matching line (you only need to fill in one line), for example `GEMINI_API_KEY=abc123...`
+4. Restart the server (`Ctrl + C`, then `npm start`). The terminal will show: `Easy explanations: ON (gemini)`.
 
-Agar kisi word par "AI could not answer" dikhe, to key galat hai ya free limit poori ho gayi hai. Us waqt app dictionary wale jawab par wapas aa jaata hai.
-Purane saved words (bina AI wale) agli baar click karne par apne aap AI se dobara samjhaye jaate hain.
+If a word shows "AI could not answer", either the key is wrong or you've used up the free limit. When that happens, the app falls back to the dictionary answer.
+Older saved words (saved without AI) are explained again by the AI automatically the next time you click them.
 
-## Kaise kaam karta hai
+## How it works
 
-- **Frontend** (`public/index.html`): PDF ko `pdf.js` se browser mein hi render karta hai, text nikaal kar har word ko clickable bana deta hai.
-- **Backend** (`server.js`): jab word click hota hai, do FREE APIs se meaning fetch karta hai:
-  - [dictionaryapi.dev](https://dictionaryapi.dev) — English definition (no signup, no key)
-  - [mymemory.translated.net](https://mymemory.translated.net) — Hindi translation (no signup, no key)
-  - Result ko `data/words.json` mein save kar deta hai, so agli baar wahi word milte hi turant (cached) meaning dikha deta hai, dobara API call nahi lagti.
+- **Frontend** (`public/index.html`): renders the PDF in the browser with `pdf.js`, extracts the text, and makes every word clickable.
+- **Backend** (`server.js`): when a word is clicked, it fetches the meaning from two FREE APIs:
+  - [dictionaryapi.dev](https://dictionaryapi.dev): English definition (no signup, no key)
+  - [mymemory.translated.net](https://mymemory.translated.net): Hindi translation (no signup, no key)
+  - It saves the result to `data/words.json`, so the next time the same word comes up, the meaning shows instantly from the cache with no extra API call.
 
-## Behtar (AI-powered, context-aware) meanings chahiye?
+## Want better (AI-powered, context-aware) meanings?
 
-Abhi wala setup free hai lekin generic dictionary meaning deta hai (context nahi padhta). Agar tum chahte ho ki meaning us sentence ke context ke hisab se ho (jaise humne pehle chat mein banaya tha), to `server.js` ke andar `lookupWord()` function mein comment kiya hua OpenAI/ChatGPT wala code hai — usko uncomment karo aur apni API key daal do:
+The current setup is free, but it gives generic dictionary meanings and doesn't look at the context. If you want the meaning to match the sentence it appears in (like we built earlier in chat), there is commented-out OpenAI/ChatGPT code inside the `lookupWord()` function in `server.js`. Uncomment it and add your API key:
 
 ```bash
 export OPENAI_API_KEY=sk-...   # Mac/Linux
 setx OPENAI_API_KEY "sk-..."   # Windows
 ```
 
-Free tier ke liye OpenAI ki jagah koi bhi free-tier LLM API (Groq, Gemini free tier, ya Anthropic ka apna) bhi wahi jagah plug kar sakte ho — bas fetch call ka URL/headers/body us provider ke hisab se badal dena.
+If you want a free tier, you can plug any free-tier LLM API (Groq, Gemini's free tier, or Anthropic's own) into the same spot instead of OpenAI. Just change the fetch call's URL, headers, and body to match that provider.
 
-## Aage badha sakte ho
+## Ideas for extending it
 
-- Hindi/Devanagari text ke words ke liye bhi click-support (abhi sirf English words detect hote hain)
-- Ek "quiz me" button jo saved words se flashcard revision bana de
-- Multiple PDFs ke liye alag-alag saved-word lists
+- Click support for Hindi/Devanagari words too (right now only English words are detected)
+- A "Quiz me" button that turns saved words into flashcards for revision
+- Separate saved-word lists for different PDFs
 
-## AI slow hai? Pehle yeh chalao
+## AI slow? Run this first
 
 ```
 node diagnose.js
 ```
-Yeh 1 minute mein bata deta hai ki deri internet/IPv6 ki wajah se hai ya Gemini ke "thinking" ki wajah se, aur `.env` mein daalne ki sahi lines print karta hai.
+In about a minute, this tells you whether the delay comes from your internet/IPv6 or from Gemini's "thinking", and it prints the correct lines to add to `.env`.
